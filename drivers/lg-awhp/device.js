@@ -76,6 +76,10 @@ class LGAWHPDevice extends Homey.Device {
       'measure_power.heat',
       'meter_power.heat',
       'measure_cop',
+      'measure_compressor_frequency',
+      'measure_compressor_rpm',
+      'power_limit',
+      'power_limit_enabled',
       'measure_pressure',
       'measure_water',
       'alarm_generic',
@@ -535,6 +539,19 @@ class LGAWHPDevice extends Homey.Device {
       const waterPressure = ModbusClient.bufferToUint16(buffer.subarray(26, 28)) / 10;
       this.setCapabilityValue('measure_pressure', waterPressure).catch(this.error);
 
+      // 30025 Compressor frequency (Hz)
+      try {
+        const compressorResult = await this.modbus.readInputRegisters(slaveId, 24, 1);
+        const compressorBuffer = Buffer.concat(compressorResult);
+        const compressorHz = ModbusClient.bufferToUint16(compressorBuffer);
+        const compressorRpm = compressorHz * 60;
+
+        this.setCapabilityValue('measure_compressor_frequency', compressorHz).catch(this.error);
+        this.setCapabilityValue('measure_compressor_rpm', compressorRpm).catch(this.error);
+      } catch (err) {
+        this.log('Error reading compressor frequency:', err.message);
+      }
+
       // Calculate thermal output power from flow rate and delta T
       // Q(W) = flowRate(L/min) / 60 * 1000(g/L) * 4.186(J/g·°C) * deltaT(°C)
       // Simplified: Q(W) = flowRate * 69.77 * deltaT
@@ -570,9 +587,9 @@ class LGAWHPDevice extends Homey.Device {
   // ============================================
   async processCoilStates(slaveId) {
     try {
-      // Read 3 coils starting at address 0 (00001-00003)
+      // Read 7 coils starting at address 0 (00001-00007)
       // modbus-pdu returns an array of bit values (0 or 1), not buffers
-      const bits = await this.modbus.readCoils(slaveId, 0, 3);
+      const bits = await this.modbus.readCoils(slaveId, 0, 7);
 
       // 00001 (bit 0): Enable/Disable Heating/Cooling → onoff (standard)
       const hcEnabled = bits[0] === 1;
@@ -597,6 +614,15 @@ class LGAWHPDevice extends Homey.Device {
         this.setCapabilityValue('silent_mode', silentMode).catch(this.error);
       }
 
+      // 00007 (bit 6): Active power limitation
+      if (this.hasCapability('power_limit_enabled')) {
+        const powerLimitEnabled = bits[6] === 1;
+        const prevPowerLimitEnabled = this.getCapabilityValue('power_limit_enabled');
+        if (prevPowerLimitEnabled !== powerLimitEnabled) {
+          this.setCapabilityValue('power_limit_enabled', powerLimitEnabled).catch(this.error);
+        }
+      }
+
     } catch (error) {
       this.log('Error processing coil states:', error);
     }
@@ -608,8 +634,8 @@ class LGAWHPDevice extends Homey.Device {
   // ============================================
   async processHoldingRegisters(slaveId) {
     try {
-      // Read 9 holding registers starting at address 0 (40001-40009)
-      const result = await this.modbus.readHoldingRegisters(slaveId, 0, 9);
+      // Read 25 holding registers starting at address 0 (40001-40025)
+      const result = await this.modbus.readHoldingRegisters(slaveId, 0, 25);
       const buffer = Buffer.concat(result);
 
       // 40001 (offset 0): Operation mode
@@ -642,6 +668,15 @@ class LGAWHPDevice extends Homey.Device {
         const prevDhwTarget = this.getCapabilityValue('target_temperature.dhw');
         if (prevDhwTarget !== dhwTargetTemp) {
           this.setCapabilityValue('target_temperature.dhw', dhwTargetTemp).catch(this.error);
+        }
+      }
+
+      // 40025 (offset 48): Power limit
+      if (this.hasCapability('power_limit')) {
+        const powerLimit = ModbusClient.bufferToUint16(buffer.subarray(48, 50));
+        const prevPowerLimit = this.getCapabilityValue('power_limit');
+        if (prevPowerLimit !== powerLimit) {
+          this.setCapabilityValue('power_limit', powerLimit).catch(this.error);
         }
       }
 
@@ -754,6 +789,20 @@ class LGAWHPDevice extends Homey.Device {
         this.log(`Control method set to: ${value} (register value: ${methodValue})`);
       }
     });
+
+    if (this.hasCapability('power_limit')) {
+      this.registerCapabilityListener('power_limit', async (value) => {
+        await this.writeHoldingRegister(24, Math.round(value));
+        this.log(`Power limit set to ${value}`);
+      });
+    }
+
+    if (this.hasCapability('power_limit_enabled')) {
+      this.registerCapabilityListener('power_limit_enabled', async (value) => {
+        await this.writeCoil(6, value);
+        this.log(`Power limitation enabled: ${value}`);
+      });
+    }
 
     this.log('Capability listeners registered');
   }
