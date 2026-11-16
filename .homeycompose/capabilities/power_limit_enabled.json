@@ -1,0 +1,15 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Power limit enabled",
+    "nl": "Vermogenslimiet ingeschakeld"
+  },
+  "desc": {
+    "en": "Whether active power limiting is enabled",
+    "nl": "Of actieve vermogensbegrenzing is ingeschakeld"
+  },
+  "getable": true,
+  "setable": true,
+  "uiComponent": "toggle",
+  "insights": true
+}
