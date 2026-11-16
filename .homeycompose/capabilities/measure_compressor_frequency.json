@@ -1,0 +1,20 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Compressor frequency",
+    "nl": "Compressorfrequentie"
+  },
+  "desc": {
+    "en": "Compressor operating frequency",
+    "nl": "Compressordraaifrequentie"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "units": {
+    "en": "Hz"
+  },
+  "decimals": 0,
+  "min": 0
+}
