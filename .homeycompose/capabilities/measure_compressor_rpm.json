@@ -1,0 +1,20 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Compressor RPM",
+    "nl": "Compressor RPM"
+  },
+  "desc": {
+    "en": "Compressor rotational speed",
+    "nl": "Compressorsnelheid in RPM"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "units": {
+    "en": "RPM"
+  },
+  "decimals": 0,
+  "min": 0
+}
