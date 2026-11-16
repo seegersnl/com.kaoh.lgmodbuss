@@ -1,0 +1,20 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Power limit",
+    "nl": "Vermogenslimiet"
+  },
+  "desc": {
+    "en": "Configured compressor power limit",
+    "nl": "Ingestelde vermogenslimiet"
+  },
+  "getable": true,
+  "setable": true,
+  "uiComponent": "sensor",
+  "insights": true,
+  "units": {
+    "en": "W"
+  },
+  "decimals": 0,
+  "min": 0
+}
